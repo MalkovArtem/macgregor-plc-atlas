@@ -1,0 +1,23 @@
+[
+  {
+    "id": "A100 · Crane Controller|A100|Main crane controller / CAN master",
+    "module": "A100 · Crane Controller",
+    "type": "CAN",
+    "addr": "A100",
+    "name": "Main crane controller / CAN master",
+    "fields": {
+      "Тип устройства": "Main electronic crane controller",
+      "Назначение": "Processes operator commands, safety interlocks and sensor feedback; exchanges CAN messages with A55.1–A61.1 and the Beckhoff I/O station.",
+      "Связанные модули": "A55.1, A56.1, A57.1, A58.1, A59.1, A60.1, A61.1, K26.0–K52.0",
+      "CAN": "125 kbit/s chain; verify H/L/GND continuity and correct termination.",
+      "Drawing PDF page": "168",
+      "Drawing source": "3_Drawings(1).pdf — CAN/network cable plan",
+      "Manual PDF page": "100",
+      "Manual source": "2_Operating manual(1).pdf — electronic control/PWM section",
+      "Troubleshooting": "Check controller supply and status LEDs, Ethernet/CAN connections, CAN termination, node status and communication alarms before troubleshooting individual outputs."
+    },
+    "search": "a100 · crane controller a100 main crane controller / can master main electronic crane controller processes operator commands, safety interlocks and sensor feedback; exchanges can messages with a55.1–a61.1 and the beckhoff i/o station. a55.1, a56.1, a57.1, a58.1, a59.1, a60.1, a61.1, k26.0–k52.0 125 kbit/s chain; verify h/l/gnd continuity and correct termination. 168 3_drawings(1).pdf — can/network cable plan 100 2_operating manual(1).pdf — electronic control/pwm section check controller supply and status leds, ethernet/can connections, can termination, node status and communication alarms before troubleshooting individual outputs.",
+    "cat": "can",
+    "order": 331
+  }
+]
