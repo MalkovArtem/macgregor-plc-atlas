@@ -42,6 +42,36 @@ button,input,select,textarea{font:inherit}
 .systemCard .kind{font-size:11px;color:var(--muted)}
 .systemCard .fn{font-size:12px;margin-top:5px;line-height:1.35}
 
+
+.detailTabs{overflow-x:auto;white-space:nowrap;display:flex}
+.detailTabs button{flex:0 0 auto}
+.sourceCard{border:1px solid #2d4b64;border-radius:11px;background:#091724;padding:11px;margin-bottom:9px}
+.sourceCard h4{margin:0 0 7px;color:#8ed8ff}
+.sourceFlow{white-space:pre-line;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;background:#061019;border:1px solid #28435a;border-radius:9px;padding:10px}
+.statusPanel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.statusBtn{position:relative;border:1px solid #3b5266;background:#101b25;color:#dbe8f2;border-radius:12px;padding:15px 10px;font-weight:800;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+.statusBtn::before{content:"";display:inline-block;width:13px;height:13px;border-radius:50%;margin-right:8px;background:#4c5964;vertical-align:-2px;box-shadow:0 0 4px #4c5964}
+.statusBtn[data-state="on"]::before,.statusBtn.active[data-state="on"]::before{background:#21e779;box-shadow:0 0 7px #21e779,0 0 18px rgba(33,231,121,.75)}
+.statusBtn[data-state="off"]::before,.statusBtn.active[data-state="off"]::before{background:#85909a;box-shadow:0 0 6px #85909a}
+.statusBtn[data-state="fault"]::before,.statusBtn.active[data-state="fault"]::before{background:#ff4050;box-shadow:0 0 8px #ff4050,0 0 20px rgba(255,64,80,.75)}
+.statusBtn[data-state="unchecked"]::before,.statusBtn.active[data-state="unchecked"]::before{background:#ffd541;box-shadow:0 0 8px #ffd541,0 0 20px rgba(255,213,65,.7)}
+.statusBtn.active{border-color:#d7ecff;background:#173049;transform:translateY(-1px)}
+.liveStrip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 12px}
+.liveLamp{width:14px;height:14px;border-radius:50%;background:#4c5964;box-shadow:0 0 4px #4c5964}
+.liveLamp.on{background:#21e779;box-shadow:0 0 8px #21e779,0 0 18px rgba(33,231,121,.75)}
+.liveLamp.off{background:#85909a}
+.liveLamp.fault{background:#ff4050;box-shadow:0 0 8px #ff4050,0 0 18px rgba(255,64,80,.75)}
+.liveLamp.unchecked{background:#ffd541;box-shadow:0 0 8px #ffd541}
+.statusMini{display:inline-flex;align-items:center;gap:5px;font-size:11px}
+.statusMini i{width:9px;height:9px;border-radius:50%;display:inline-block;background:#4c5964}
+.statusMini.on i{background:#21e779;box-shadow:0 0 7px #21e779}
+.statusMini.off i{background:#85909a}
+.statusMini.fault i{background:#ff4050;box-shadow:0 0 7px #ff4050}
+.statusMini.unchecked i{background:#ffd541;box-shadow:0 0 7px #ffd541}
+.troubleStep{border-left:3px solid #4eb8ff;background:#0b1925;border-radius:0 9px 9px 0;padding:9px 11px;margin:7px 0}
+.troubleStep b{color:#8ed8ff}
+@media(max-width:650px){.statusPanel{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
@@ -68,10 +98,21 @@ button,input,select,textarea{font:inherit}
       <div class="deviceImageWrap"><img id="dlgImage" alt="Изображение устройства"><div id="dlgImageNote" class="caption"></div></div>
       <div id="dlgSummary" class="summary"></div>
     </div>
-    <div class="tabs"><button data-tab="logic" class="active">Логика</button><button data-tab="check">Проверка</button><button data-tab="source">Источник</button><button data-tab="notes">Заметки</button></div>
+    <div class="tabs detailTabs">
+      <button data-tab="logic" class="active">Описание</button>
+      <button data-tab="scheme">Схема</button>
+      <button data-tab="manual">Мануал</button>
+      <button data-tab="trouble">Troubleshooting</button>
+      <button data-tab="check">Проверка</button>
+      <button data-tab="status">Состояние</button>
+      <button data-tab="notes">Заметки</button>
+    </div>
     <section id="pane-logic" class="pane active"></section>
+    <section id="pane-scheme" class="pane"></section>
+    <section id="pane-manual" class="pane"></section>
+    <section id="pane-trouble" class="pane"></section>
     <section id="pane-check" class="pane"></section>
-    <section id="pane-source" class="pane"></section>
+    <section id="pane-status" class="pane"></section>
     <section id="pane-notes" class="pane"><textarea id="noteText" placeholder="Фактическая уставка, номер клеммы, наблюдения на судне…"></textarea><button id="saveNote" type="button">Сохранить заметку</button></section>
   </div>
 </dialog>
@@ -165,12 +206,12 @@ function renderPhotos(r){
 }
 function collectLocalPayload(){
   const notes={};
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mg-note:'))notes[k.slice(8)]=localStorage.getItem(k)}
-  return {version:7,updated:new Date().toISOString(),notes};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mg-note:'))notes[k.slice(8)]=localStorage.getItem(k);if(k&&k.startsWith('mg-status:'))notes['__status__'+k.slice(10)]=localStorage.getItem(k)}
+  return {version:8,updated:new Date().toISOString(),notes};
 }
 function applyPayload(obj){
   let n=0;
-  for(const [id,text] of Object.entries((obj&&obj.notes)||{})){localStorage.setItem(noteKey(id),String(text));n++}
+  for(const [id,text] of Object.entries((obj&&obj.notes)||{})){if(id.startsWith('__status__'))localStorage.setItem(statusKey(id.slice(10)),String(text));else localStorage.setItem(noteKey(id),String(text));n++}
   return n;
 }
 function b64(buf){return btoa(String.fromCharCode(...new Uint8Array(buf)))}
@@ -241,6 +282,97 @@ async function syncPull(){
   setSyncStatus(`Получено заметок: ${n}. Cloud update: ${rows[0].updated_at}`,true);
 }
 
+
+function statusKey(id){return `mg-status:${id}`}
+function getDeviceStatus(id){return localStorage.getItem(statusKey(id))||'unchecked'}
+function statusLabel(state){return ({on:'ON / ACTIVE',off:'OFF / INACTIVE',fault:'FAULT',unchecked:'NOT CHECKED'})[state]||state}
+function statusClass(id){return getDeviceStatus(id)}
+function statusMiniHtml(id){
+  const st=getDeviceStatus(id);
+  return `<span class="statusMini ${st}"><i></i>${statusLabel(st)}</span>`;
+}
+function setDeviceStatus(id,state){
+  localStorage.setItem(statusKey(id),state);
+  renderStatusPane(selectedRecord);
+  if(typeof renderSystemPage==='function' && document.getElementById('systemsDialog')?.open)renderSystemPage();
+  render();
+}
+function renderStatusPane(r){
+  const st=getDeviceStatus(r.id);
+  $('#pane-status').innerHTML=`<div class="block"><b>Текущее отмеченное состояние</b><div class="liveStrip"><span class="liveLamp ${st}"></span><strong>${statusLabel(st)}</strong><span class="tag">сохраняется на этом устройстве</span></div></div>
+  <div class="statusPanel">
+    <button class="statusBtn ${st==='on'?'active':''}" data-state="on">ON / ACTIVE</button>
+    <button class="statusBtn ${st==='off'?'active':''}" data-state="off">OFF / INACTIVE</button>
+    <button class="statusBtn ${st==='fault'?'active':''}" data-state="fault">FAULT</button>
+    <button class="statusBtn ${st==='unchecked'?'active':''}" data-state="unchecked">NOT CHECKED</button>
+  </div>
+  <div class="block" style="margin-top:10px"><b>Как использовать</b><div>Во время проверки нажми фактическое состояние. Кнопка и индикатор подсветятся, а состояние останется сохранённым после закрытия страницы.</div></div>`;
+  $('#pane-status').querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>setDeviceStatus(r.id,b.dataset.state)));
+}
+function sourceValue(r){
+  return field(r,['источник','источник из мануала','источник из схемы','электрическая привязка','plc / pwm привязка','связи по схемам']);
+}
+function manualTextFor(r){
+  const f=r.fields||{};
+  return f['Функция по мануалу']||f['Функция']||f['Для чего нужен']||f['Функция в логике PLC']||'В доступном мануале отдельное текстовое описание для этого устройства пока не привязано.';
+}
+function schemeTextFor(r){
+  const f=r.fields||{};
+  const plc=f['PLC / PWM привязка']||f['PLC input']||f['Куда приходит сигнал']||f['Электрическая привязка']||f['Связи по схемам']||'Точная электрическая привязка пока не подтверждена.';
+  const hyd=f['Номер устройства / гидросхемы']||f['Номер по гидросхеме']||f['Гидравлический номер']||f['Гидравлические номера']||r.addr;
+  const conn=f['Разъём / кабель']||f['Клемма / кабель']||'См. утверждённый wiring diagram.';
+  return `Hydraulic / device tag: ${hyd}
+↓
+Electrical / PLC path: ${plc}
+↓
+Connector / cable: ${conn}
+↓
+Device function: ${manualTextFor(r)}`;
+}
+function troubleshootingFor(r){
+  const f=r.fields||{};
+  const cat=(r.cat||'').toLowerCase();
+  const steps=[];
+  steps.push(['1. Подтвердить симптом',`Сравнить физическое состояние устройства, индикацию PLC/HMI и сохранённое состояние в Atlas.`]);
+  if(cat.includes('pressure')){
+    steps.push(['2. Проверить реальное давление','Подключить контрольный манометр или сравнить с локальным дисплеем. Убедиться, что давление действительно соответствует команде.']);
+    steps.push(['3. Проверить электрический сигнал','Для transmitter проверить питание и ток 4–20 mA; для pressure switch — 24 VDC до и после контакта и фактическую уставку.']);
+  }else if(cat.includes('valve')||cat.includes('pwm')){
+    steps.push(['2. Проверить разрешение PLC/CAN','Убедиться, что выполнены interlocks и на PWM/DO есть команда. Проверить PWR, DIA/BUS и жёлтый OUT нужного канала.']);
+    steps.push(['3. Проверить катушку','Измерить напряжение/ток команды и сопротивление катушки при безопасно отключённом питании. Осмотреть разъём, кабель и LED DIN-plug.']);
+    steps.push(['4. Проверить гидравлическую реакцию','Сравнить давление до/после клапана, проверить перемещение spool/actuator и отсутствие заклинивания.']);
+  }else if(cat.includes('encoder')){
+    steps.push(['2. Проверить механику','Проверить муфту, рычаг, крепление и отсутствие проскальзывания/люфта.']);
+    steps.push(['3. Проверить сигнал','Питание, 0 V, signal wire, изменение значения при медленном движении и соответствие PLC/HMI.']);
+  }else if(cat.includes('load')){
+    steps.push(['2. Проверить механическую установку','Осмотреть load pin/cell, крепление, повреждение кабеля и отсутствие боковой нагрузки.']);
+    steps.push(['3. Проверить 4–20 mA','Сравнить ток петли с известной нагрузкой и PLC value; проверить zero/span только по утверждённой процедуре.']);
+  }else if(cat.includes('brake')){
+    steps.push(['2. Проверить команду отпускания','Проверить solenoid command и фактическое brake-control pressure.']);
+    steps.push(['3. Проверить механику тормоза','Проверить, что тормоз полностью отпускается/накладывается, нет заклинивания и утечки.']);
+  }else{
+    steps.push(['2. Проверить питание и соединения','Проверить питание, 0 V, CAN/PLC connection, клеммы и кабель.']);
+    steps.push(['3. Проверить реакцию','Сравнить команду с фактическим движением/сигналом и соседними связанными устройствами.']);
+  }
+  if(f['Если не сработает'])steps.push(['Возможный результат отказа',f['Если не сработает']]);
+  if(f['Проверка'])steps.push(['Проверка из карточки',f['Проверка']]);
+  steps.push(['Последний шаг','Если электрический сигнал и команда правильные, переходить к гидравлической/механической части; если сигнала нет — двигаться назад по схеме к PLC/PWM и interlocks.']);
+  return steps;
+}
+function renderSourcePanes(r){
+  const src=sourceValue(r);
+  const keys=exactPhotoKeys(r);
+  const imgHtml=keys.length?keys.map(k=>`<img src="${FIELD_IMAGES[k]}" alt="${escapeHtml(k)}">`).join(''):`<img src="${IMAGE_MAP[r.cat]||IMAGE_MAP._fallback}" alt="manual illustration">`;
+  $('#pane-scheme').innerHTML=`<div class="sourceCard"><h4>Привязка к схеме</h4><div class="sourceFlow">${escapeHtml(schemeTextFor(r))}</div></div>
+  <div class="sourceCard"><h4>Подтверждённый источник</h4><div>${escapeHtml(src||'Точный лист схемы ещё не внесён. Карточка помечена для дальнейшей привязки.')}</div></div>
+  <div class="gallery">${imgHtml}</div>`;
+  $('#pane-manual').innerHTML=`<div class="sourceCard"><h4>Выдержка / смысл из мануала</h4><div>${escapeHtml(manualTextFor(r))}</div></div>
+  <div class="sourceCard"><h4>Работа устройства</h4><div>${escapeHtml(field(r,['когда активен','когда значение растёт','когда вход on','когда выход on'])||'Условие активации уточняется по конкретной логике и схеме.')}</div></div>
+  <div class="sourceCard"><h4>Что происходит при отказе</h4><div>${escapeHtml(field(r,['если не сработает','когда ненормально','когда вход off','когда выход off'])||'Последствие зависит от interlock logic и гидравлической функции устройства.')}</div></div>`;
+  const steps=troubleshootingFor(r);
+  $('#pane-trouble').innerHTML=steps.map(([h,t])=>`<div class="troubleStep"><b>${escapeHtml(h)}</b><div>${escapeHtml(t)}</div></div>`).join('');
+}
+
 function openDetail(id){selectedRecord=records.find(r=>r.id===id);if(!selectedRecord)return;const r=selectedRecord;$('#dlgAddr').textContent=`${r.addr} · ${r.module}`;$('#dlgName').textContent=r.name;renderPhotos(r);const device=field(r,['тип датчика/устройства','полевое устройство','исполнительное устройство']);const tag=field(r,['номер устройства','номер/источник','куда уходит']);const src=field(r,['откуда приходит','куда уходит выход']);const on=field(r,['когда led / вход on','когда активен','когда выход on']);const off=field(r,['когда led / вход off','когда неактивен','когда выход off']);const fun=field(r,['функция в логике plc','функция plc','функция']);const reaction=field(r,['что делает система','реакция/примечание']);const source=field(r,['источник из мануала','источник']);$('#dlgSummary').innerHTML=summaryField('Тип',device)+summaryField('Tag / номер',tag)+summaryField('Связь',src)+summaryField('PLC-функция',fun);$('#pane-logic').innerHTML=`<div class="block"><b>Когда ON</b><div class="on">${escapeHtml(on)}</div></div><div class="block"><b>Когда OFF</b><div class="off">${escapeHtml(off)}</div></div><div class="block flow"><b>Логическая цепь</b>${r.type==='DI'?`${escapeHtml(src)}
 ↓
 Контакт/сигнал активируется
@@ -253,9 +385,9 @@ ${escapeHtml(r.addr)} / LED выхода ON
 ↓
 ${escapeHtml(src)}
 ↓
-${escapeHtml(fun)}`}</div><div class="block"><b>Реакция системы</b><div>${escapeHtml(reaction)}</div></div>`;const checks=r.type==='DI'?['Проверить реальное состояние датчика/контакта','Проверить 24 VDC на устройстве и после контакта','Проверить кабель и клеммы до PLC','Сравнить LED входа со статусом PLC/HMI']:r.type==='DO'?['Проверить команду PLC и разрешающие условия','Проверить LED выхода и 24 VDC на клемме','Проверить реле/контактор или катушку','Проверить питание исполнительного устройства и обратную связь']:['Проверить питание и соединения устройства/модуля','Сравнить реальную физическую величину с сигналом','Проверить клеммы, экран, 0 V и целостность кабеля','Сравнить индикацию модуля со значением PLC/HMI и схемой'];$('#pane-check').innerHTML=`<div class="checklist">${checks.map((x,i)=>`<div class="check">${i+1}. ${x}</div>`).join('')}</div>`;$('#pane-source').innerHTML=`<div class="block"><b>Источник</b><div>${escapeHtml(source)}</div></div><div class="block"><b>Ограничение</b><div>Точные уставки, номера клемм и cable ID необходимо сверять с последней утверждённой схемой и шильдиком устройства.</div></div>`;$('#noteText').value=localStorage.getItem(noteKey(r.id))||'';document.querySelectorAll('.tabs button').forEach((b,i)=>b.classList.toggle('active',i===0));document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('active',i===0));$('#detailDialog').showModal()}
+${escapeHtml(fun)}`}</div><div class="block"><b>Реакция системы</b><div>${escapeHtml(reaction)}</div></div>`;const checks=r.type==='DI'?['Проверить реальное состояние датчика/контакта','Проверить 24 VDC на устройстве и после контакта','Проверить кабель и клеммы до PLC','Сравнить LED входа со статусом PLC/HMI']:r.type==='DO'?['Проверить команду PLC и разрешающие условия','Проверить LED выхода и 24 VDC на клемме','Проверить реле/контактор или катушку','Проверить питание исполнительного устройства и обратную связь']:['Проверить питание и соединения устройства/модуля','Сравнить реальную физическую величину с сигналом','Проверить клеммы, экран, 0 V и целостность кабеля','Сравнить индикацию модуля со значением PLC/HMI и схемой'];$('#pane-check').innerHTML=`<div class="checklist">${checks.map((x,i)=>`<div class="check">${i+1}. ${x}</div>`).join('')}</div>`;$('#pane-source').innerHTML=`<div class="block"><b>Источник</b><div>${escapeHtml(source)}</div></div><div class="block"><b>Ограничение</b><div>Точные уставки, номера клемм и cable ID необходимо сверять с последней утверждённой схемой и шильдиком устройства.</div></div>`;renderSourcePanes(r);renderStatusPane(r);$('#noteText').value=localStorage.getItem(noteKey(r.id))||'';document.querySelectorAll('.tabs button').forEach((b,i)=>b.classList.toggle('active',i===0));document.querySelectorAll('.pane').forEach((p,i)=>p.classList.toggle('active',i===0));$('#detailDialog').showModal()}
 function saveNote(){if(!selectedRecord)return;localStorage.setItem(noteKey(selectedRecord.id),$('#noteText').value);$('#saveNote').textContent='Сохранено';setTimeout(()=>$('#saveNote').textContent='Сохранить заметку',900)}
-function exportData(){const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mg-note:'))notes[k.slice(8)]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify({version:2,exported:new Date().toISOString(),notes},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='MacGregor_PLC_Atlas_notes.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportData(){const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mg-note:'))notes[k.slice(8)]=localStorage.getItem(k);if(k&&k.startsWith('mg-status:'))notes['__status__'+k.slice(10)]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify({version:2,exported:new Date().toISOString(),notes},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='MacGregor_PLC_Atlas_notes.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function importData(file){try{const obj=JSON.parse(await file.text());let n=0;for(const [id,text] of Object.entries(obj.notes||{})){localStorage.setItem(noteKey(id),String(text));n++}alert(`Импортировано заметок: ${n}`)}catch(e){alert('Не удалось прочитать JSON: '+e.message)}}
 
 const SYSTEM_NAMES=['Main Hoist','Auxiliary Hoist','Luffing','Slewing','Common'];
@@ -271,7 +403,7 @@ function renderSystemPage(){
   const counts={};
   rows.forEach(r=>counts[r.cat]=(counts[r.cat]||0)+1);
   $('#systemSummary').innerHTML=`<b>${selectedSystem}</b><div>${rows.length} устройств: ${Object.entries(counts).map(([k,v])=>`${k}: ${v}`).join(' · ')}</div>`;
-  $('#systemDeviceList').innerHTML=rows.map(r=>`<div class="systemCard" data-id="${r.id}"><div class="top"><span class="addr">${escapeHtml(r.addr)}</span><span class="kind">${escapeHtml(r.fields['Тип устройства']||r.cat)}</span></div><b>${escapeHtml(r.name)}</b><div class="fn">${escapeHtml(r.fields['Функция']||'')}</div><div class="tag">${escapeHtml(r.fields['PLC / PWM привязка']||'')}</div></div>`).join('');
+  $('#systemDeviceList').innerHTML=rows.map(r=>`<div class="systemCard" data-id="${r.id}"><div class="top"><span class="addr">${escapeHtml(r.addr)}</span><span class="kind">${escapeHtml(r.fields['Тип устройства']||r.cat)}</span></div><b>${escapeHtml(r.name)}</b><div class="fn">${escapeHtml(r.fields['Функция']||'')}</div><div class="tag">${escapeHtml(r.fields['PLC / PWM привязка']||'')}</div><div style="margin-top:7px">${statusMiniHtml(r.id)}</div></div>`).join('');
 }
 
 function setupEvents(){document.addEventListener('click',e=>{const m=e.target.closest('[data-module]');if(m){selectedModule=m.dataset.module;renderModules();render();return}const c=e.target.closest('.openCard');if(c){openDetail(c.dataset.id);return}const chip=e.target.closest('[data-chip]');if(chip){$('#search').value=chip.dataset.chip;selectedModule='ALL';renderModules();render();return}const tab=e.target.closest('.tabs button');if(tab){document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));tab.classList.add('active');$(`#pane-${tab.dataset.tab}`).classList.add('active')}});$('#search').addEventListener('input',()=>{selectedModule='ALL';renderModules();render()});$('#search').addEventListener('search',()=>{selectedModule='ALL';renderModules();render()});$('#ioType').addEventListener('change',()=>{selectedModule='ALL';renderModules();render()});$('#saveNote').addEventListener('click',saveNote);$('#exportBtn').addEventListener('click',exportData);$('#importInput').addEventListener('change',e=>e.target.files[0]&&importData(e.target.files[0]));$('#chips').innerHTML=CHIPS.map(x=>`<button type="button" class="chip" data-chip="${x}">${x}</button>`).join('');
